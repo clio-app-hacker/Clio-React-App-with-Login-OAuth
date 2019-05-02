@@ -4,6 +4,21 @@ const config = require('./config.json');
 const uuid = require('uuidv4');
 const session = require('express-session');
 
+// persists session info between server restarts
+const FileStore = require('session-file-store')(session);
+
+//body-parser middleware to body parse the data and add it to the req.body property
+const bodyParser = require('body-parser');
+
+// for authentication
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+
+// for REST 
+const axios = require('axios');
+
+// handling encrypted passwords
+const bcrypt = require('bcrypt-nodejs');
 /*
 // use express to handle incomming request
 // use simple-oauth2 for oauth
@@ -22,19 +37,54 @@ const credentials = {
     }
 };
 
+// configure passport.js to use the local strategy
+passport.use(new LocalStrategy(
+    { usernameField: 'email' },
+    (email, password, done) => {
+        axios.get(`http://localhost:5000/users?email=${email}`)
+            .then(res => {
+                const user = res.data[0]
+                if (!user) {
+                    return done(null, false, { message: 'Invalid credentials.\n' });
+                }
+                if (!bcrypt.compareSync(password, user.password)) {
+                    return done(null, false, { message: 'Invalid credentials.\n' });
+                }
+                return done(null, user);
+            })
+            .catch(error => done(error));
+    }
+));
+
+// tell passport how to serialize the user
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser((id, done) => {
+    axios.get(`http://localhost:5000/users/${id}`)
+        .then(res => done(null, res.data))
+        .catch(error => done(error, false))
+});
+
 // create oauth instance using credentials
 const oauth2 = require('simple-oauth2').create(credentials);
 
 // add & configure session middleware
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
 app.use(session({
     genid: (req) => {
         console.log('Inside the session middleware: ', req.sessionID)
         return uuid() // use UUIDs for session IDs
     },
+    store: new FileStore(),
     secret: 'keyboard cat',
     resave: false,
     saveUninitialized: true
 }));
+app.use(passport.initialize());
+app.use(passport.session());
 
 /**
  * Done route - for testing mostly...
@@ -111,6 +161,37 @@ app.get('/oauth', (req, res) => {
     res.redirect(authorizationUri);
 });
 
+// create the login get and post routes
+app.get('/login', (req, res) => {
+    console.log('Inside GET /login callback function')
+    console.log(req.sessionID)
+    res.send(`You got the login page!\n`)
+})
+
+app.post('/login', (req, res, next) => {
+    console.log('Inside POST /login callback')
+    passport.authenticate('local', (err, user, info) => {
+        console.log('Inside passport.authenticate() callback');
+        console.log(`req.session.passport: ${JSON.stringify(req.session.passport)}`)
+        console.log(`req.user: ${JSON.stringify(req.user)}`)
+        req.login(user, (err) => {
+            console.log('Inside req.login() callback')
+            console.log(`req.session.passport: ${JSON.stringify(req.session.passport)}`)
+            console.log(`req.user: ${JSON.stringify(req.user)}`)
+            return res.send('You were authenticated & logged in!\n');
+        })
+    })(req, res, next);
+})
+
+app.get('/authrequired', (req, res) => {
+    console.log('Inside GET /authrequired callback')
+    console.log(`User authenticated? ${req.isAuthenticated()}`)
+    if (req.isAuthenticated()) {
+        res.send('you hit the authentication endpoint\n')
+    } else {
+        res.redirect('/')
+    }
+})
 /**
  * Catch all...
  */
