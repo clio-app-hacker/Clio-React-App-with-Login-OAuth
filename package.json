@@ -1,0 +1,26 @@
+{
+  "name": "simpleo-auth-clio-server",
+  "version": "1.0.0",
+  "description": "A simple OAuth server for clio manage",
+  "scripts": {
+    "start": "nodemon --ignore 'license.json' ./src/server/proxyServer.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clio-app-hacker/SimpleOAuth-Clio-Server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/clio-app-hacker/SimpleOAuth-Clio-Server/issues"
+  },
+  "homepage": "https://github.com/clio-app-hacker/SimpleOAuth-Clio-Server#readme",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "express": "^4.16.4",
+    "express-session": "^1.16.1",
+    "simple-oauth2": "^2.2.1",
+    "uuidv4": "^4.0.0"
+  }
+}
